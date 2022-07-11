@@ -108,19 +108,35 @@ Collector 保证了 logs, traces and metrics 里包含了同样的属性名、�
 
 ### 系统日志
 
+这些是操作系统生成且我们无法控制的日志。我们无法更改日志的格式或修改日志囊括的信息。系统格式的示例有 Syslog 和 Windows 事件日志。
 
+系统日志在主机级别（可能是物理机、虚拟机或容器）写入，并具有预定义的格式和内容（请注意，应用程序也可能将记录写入标准的系统日志中：下面的 [第三方应用程序日志](https://github.com/open-telemetry/docs-cn/tree/main/specification/logs#third-party-application-logs) 部分介绍了这种情况）。
 
-### Infrastructure Logs
+### 基础设施日志
 
+由各种基础设施组件生成的日志，例如 Kubernetes 事件（如果您想知道为什么在日志上下文中讨论事件，请参阅[事件和日志](https://github.com/open-telemetry/docs-cn/tree/main/specification/logs#事件和日志)）。与系统日志一样，基础设施日志缺少请求上下文，并且可以通过资源上下文来补充节点、pod、容器等的信息。 
 
+OpenTelemetry 收集器或其他代理可以从最常见的基础设施控制器中查询日志。
 
-### Third-party Application Logs
+### 第三方应用程序日志
 
+应用程序通常将日志写入标准输出、文件或其他专用介质（例如应用程序的 Windows 事件日志）。这些日志可以有许多不同的格式，包括以下变化：
 
+- 自由的文本格式，自动化和或通过可靠的方法来解析其中的结构化数据是困难的。
+- 更好地指定和有时可自定义格式，可以解析提取出结构化数据（例如 Apache 日志或 RFC5424 Syslog）。
+- 正式的结构化格式（例如，具有明确定义架构的 JSON 文件或 Windows 事件日志）。
 
-### Legacy First-Party Applications Logs
+收集系统被要求有能力发现最常用的应用程序，并具有可以将这些日志结构化的解析器。与系统和基础设施日志一样，应用程序日志通常缺少请求上下文，但可以通过资源上下文来补充主机和基础设施的属性信息，以及应用程序级别的属性信息（例如应用程序名称、版本、数据库名称 — 如果它是 DBMS 等）。
 
+OpenTelemetry 建议使用收集器的[文件日志接收器](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/filelogreceiver)来收集应用程序日志。或者，采用日志收集代理，例如 FluentBit，可以收集日志，然后发送到 OpenTelemetry 收集器，在那里可以进一步处理和补充日志信息。
 
+### 原第一方应用程序日志
+
+这些是内部创建的应用程序。负责配置日志收集基础设施的人员有时能够修改这些应用程序，以更改日志的写入方式和日志囊括的信息。例如，应用程序的日志输出内容的格式可能被重新配置为 json 而不是纯文本，这样做有助于提高日志收集的可靠性。
+
+开发人员可以手动对这些应用程序进行更重要的修改，例如将请求上下文添加到每个日志语句中，然而，由于 OpenTelemetry  在日志领域的努力，这种情况可能会越来越少。
+
+相对于手动修改每个日志语句，我们通过一个有趣且较不费力的方式“升级”应用程序日志 —— 提供全自动或半自动检测的解决方案，这些解决方案修改应用程序使用的日志库，以自动输出请求上下文，如每个日志语句的 trace id 或 span id。如果请求使用的传播约定符合标准，则可以从传入的请求中自动提取出请求上下文，例如通过 [W3C TraceContext](https://w3c.github.io/trace-context/)。此外，从应用程序发出的请求可以被注入相同的请求上下文数据，从而导致上下文通过应用程序传播，并创造一个契机，从所有可以通过这种方式检测的应用程序收集的日志中获得完整的请求上下文。
 
 #### Via File or Stdout Logs
 
